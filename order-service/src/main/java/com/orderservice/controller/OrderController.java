@@ -2,10 +2,13 @@ package com.orderservice.controller;
 
 import com.orderservice.dto.OrderCreatedEvent;
 import com.orderservice.dto.OrderRequest;
+import com.orderservice.dto.OrderResponse;
 import com.orderservice.service.OrderProducer;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
@@ -22,17 +25,13 @@ public class OrderController {
     }
 
     @PostMapping
-    public OrderCreatedEvent createOrder(@RequestBody OrderRequest request) {
-
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public OrderResponse createOrder(@RequestBody OrderRequest request) {
         OrderCreatedEvent event = new OrderCreatedEvent(
-                UUID.randomUUID(),
-                request.customerId(),
-                request.product(),
-                request.quantity(),
-                Instant.now()
-        );
-       producer.send(event);
+                UUID.randomUUID(), request.customerId(), request.product(), request.quantity(), Instant.now());
 
-        return event;
+        producer.send(event);
+
+        return new OrderResponse(event.orderId());
     }
 }
