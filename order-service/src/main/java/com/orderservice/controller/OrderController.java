@@ -31,7 +31,7 @@ public class OrderController {
                 request.quantity(),
                 Instant.now()
         );
-       producer.send(event.toString());
+       producer.send(event);
 
         return event;
     }
