@@ -4,6 +4,7 @@ import com.orderservice.dto.OrderCreatedEvent;
 import com.orderservice.dto.OrderRequest;
 import com.orderservice.dto.OrderResponse;
 import com.orderservice.service.OrderProducer;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,7 +27,7 @@ public class OrderController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public OrderResponse createOrder(@RequestBody OrderRequest request) {
+    public OrderResponse createOrder(@Valid @RequestBody OrderRequest request) {
         OrderCreatedEvent event = new OrderCreatedEvent(
                 UUID.randomUUID(), request.customerId(), request.product(), request.quantity(), Instant.now());
 
