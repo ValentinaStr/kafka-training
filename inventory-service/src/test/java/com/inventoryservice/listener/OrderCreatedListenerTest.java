@@ -4,6 +4,7 @@ import com.inventoryservice.dto.OrderCreatedEvent;
 import com.inventoryservice.service.OrderProcessingService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -18,10 +19,18 @@ class OrderCreatedListenerTest {
     @Mock
     private OrderProcessingService orderProcessingService;
 
+    @InjectMocks
+    private OrderCreatedListener listener;
+
     @Test
     void onOrderCreated_callsProcessingService() {
-        OrderCreatedListener listener = new OrderCreatedListener(orderProcessingService);
-        OrderCreatedEvent event = new OrderCreatedEvent(UUID.randomUUID(), 15L, "Laptop", 2, Instant.now());
+        OrderCreatedEvent event = OrderCreatedEvent.builder()
+                .orderId(UUID.randomUUID())
+                .customerId(15L)
+                .product("Laptop")
+                .quantity(2)
+                .createdTime(Instant.now())
+                .build();
 
         listener.onOrderCreated(event);
 

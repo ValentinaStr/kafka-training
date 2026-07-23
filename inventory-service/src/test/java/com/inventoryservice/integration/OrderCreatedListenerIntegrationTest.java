@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.test.context.EmbeddedKafka;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import java.time.Instant;
@@ -17,11 +16,11 @@ import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
 @SpringBootTest
-@EmbeddedKafka(partitions = 1, topics = OrderCreatedListenerIntegrationTest.TOPIC)
-@TestPropertySource(properties = {
-        "spring.kafka.bootstrap-servers=${spring.embedded.kafka.brokers}",
-        "spring.kafka.producer.value-serializer=org.springframework.kafka.support.serializer.JsonSerializer"
-})
+@EmbeddedKafka(
+        partitions = 1,
+        topics = OrderCreatedListenerIntegrationTest.TOPIC,
+        bootstrapServersProperty = "spring.kafka.bootstrap-servers"
+)
 class OrderCreatedListenerIntegrationTest {
 
     static final String TOPIC = "order-created";
@@ -34,7 +33,13 @@ class OrderCreatedListenerIntegrationTest {
 
     @Test
     void listener_consumesOrderCreatedEvent() throws Exception {
-        OrderCreatedEvent event = new OrderCreatedEvent(UUID.randomUUID(), 15L, "Laptop", 2, Instant.now());
+        OrderCreatedEvent event = OrderCreatedEvent.builder()
+                .orderId(UUID.randomUUID())
+                .customerId(15L)
+                .product("Laptop")
+                .quantity(2)
+                .createdTime(Instant.now())
+                .build();
 
         kafkaTemplate.send(TOPIC, event).get();
 
