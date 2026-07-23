@@ -1,8 +1,11 @@
 package com.inventoryservice.dto;
 
+import lombok.Builder;
+
 import java.time.Instant;
 import java.util.UUID;
 
+@Builder
 public record OrderCreatedEvent(
         UUID orderId,
         Long customerId,
