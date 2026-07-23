@@ -24,11 +24,17 @@ class OrderProducerTest {
     @Test
     void send_publishesEventToOrderCreatedTopic() {
         OrderProducer orderProducer = new OrderProducer(kafkaTemplate, TOPIC);
-        OrderCreatedEvent event = new OrderCreatedEvent(UUID.randomUUID(), 15L, "Laptop", 2, Instant.now());
+        OrderCreatedEvent event = OrderCreatedEvent.builder()
+                .orderId(UUID.randomUUID())
+                .customerId(15L)
+                .product("Laptop")
+                .quantity(2)
+                .createdTime(Instant.now())
+                .build();
 
         orderProducer.send(event);
 
-        verify(kafkaTemplate).send(TOPIC, event);
+        verify(kafkaTemplate).send(TOPIC, event.orderId().toString(), event);
         verifyNoMoreInteractions(kafkaTemplate);
     }
 }
