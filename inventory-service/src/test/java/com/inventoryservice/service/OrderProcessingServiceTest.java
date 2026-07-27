@@ -3,12 +3,14 @@ package com.inventoryservice.service;
 import com.inventoryservice.dto.InventoryResultEvent;
 import com.inventoryservice.dto.InventoryStatus;
 import com.inventoryservice.dto.OrderCreatedEvent;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -23,6 +25,11 @@ class OrderProcessingServiceTest {
 
     @InjectMocks
     private OrderProcessingService orderProcessingService;
+
+    @BeforeEach
+    void setUp() {
+        ReflectionTestUtils.setField(orderProcessingService, "availableThreshold", 5);
+    }
 
     @ParameterizedTest
     @ValueSource(ints = {1, 5})
