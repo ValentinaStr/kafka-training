@@ -75,7 +75,7 @@ NEW
 AVAILABLE
 OUT_OF_STOCK
 
-ask 7. Retry & Error Handling
+Task 7. Retry & Error Handling
 Randomly throw exception
 if (Random.nextBoolean())
     throw new RuntimeException();
