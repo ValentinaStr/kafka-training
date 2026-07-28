@@ -1,5 +1,6 @@
 package com.orderservice.service;
 
+import com.orderservice.dto.InventoryResult;
 import com.orderservice.dto.OrderCreatedEvent;
 import com.orderservice.dto.OrderRequest;
 import com.orderservice.entity.OrderEntity;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 @Slf4j
@@ -29,6 +31,14 @@ public class OrderService {
         eventPublisher.publishEvent(mapOrderEntityToOrderCreatedEvent(savedOrder));
 
         return savedOrder.getId();
+    }
+
+    @Transactional
+    public void updateOrderStatus(InventoryResult inventoryResult) {
+        OrderEntity order = orderRepository.findById(inventoryResult.orderId())
+                .orElseThrow(() -> new NoSuchElementException("Order not found: " + inventoryResult.orderId()));
+        order.setStatus(inventoryResult.status());
+        log.info("Order {} status updated to {}", order.getId(), order.getStatus());
     }
 
     private OrderEntity mapOrderRequestToOrderEntity(OrderRequest request) {
