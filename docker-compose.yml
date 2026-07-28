@@ -17,15 +17,24 @@ services:
     ports:
       - "9092:9092"
     environment:
+      # Required for any KRaft broker, even single-node.
       KAFKA_CFG_NODE_ID: 1
+      # Combined mode: this node is both broker and KRaft controller.
       KAFKA_CFG_PROCESS_ROLES: broker,controller
+      # Two client listeners: PLAINTEXT for other containers (kafka-ui),
+      # PLAINTEXT_HOST for order-service/inventory-service running on the host.
       KAFKA_CFG_LISTENERS: PLAINTEXT://:29092,PLAINTEXT_HOST://:9092,CONTROLLER://:9093
       KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      # Required because PLAINTEXT_HOST is a custom (non-default) listener name.
       KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      # Must be explicit: PLAINTEXT and PLAINTEXT_HOST share the same security
+      # protocol, so Kafka can't infer which one is for inter-broker traffic.
       KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      # Default is 3; with a single broker that would break __consumer_offsets.
       KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      # Bitnami refuses to start with an unauthenticated listener unless this is set.
       ALLOW_PLAINTEXT_LISTENER: "yes"
 
   kafka-ui:

@@ -1,6 +1,7 @@
 package com.orderservice.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.orderservice.dto.InventoryResult;
 import com.orderservice.dto.OrderCreatedEvent;
 import com.orderservice.dto.OrderRequest;
 import com.orderservice.entity.OrderEntity;
@@ -23,6 +24,7 @@ import org.springframework.test.context.transaction.TestTransaction;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -102,6 +104,30 @@ class OrderServiceIntegrationTest extends TestContainerConfig {
 
         assertThat(orderRepository.existsById(orderId)).isFalse();
         assertNoRecordForOrder(orderId, Duration.ofSeconds(3));
+    }
+
+    @Test
+    void updateOrderStatus_persistsNewStatusToDatabase() {
+        OrderEntity created = orderRepository.save(OrderEntity.builder()
+                .customerId(101L)
+                .product("car")
+                .quantity(3)
+                .createdAt(Instant.parse("2020-01-01T00:00:00Z"))
+                .build());
+        UUID id = created.getId();
+
+        InventoryResult inventoryResult = InventoryResult.builder().orderId(id)
+                .status(OrderStatus.AVAILABLE)
+                .build();
+
+        orderService.updateOrderStatus(inventoryResult);
+
+        OrderEntity saved = orderRepository.findById(id).orElseThrow();
+        assertThat(saved.getCustomerId()).isEqualTo(101L);
+        assertThat(saved.getProduct()).isEqualTo("car");
+        assertThat(saved.getQuantity()).isEqualTo(3);
+        assertThat(saved.getStatus()).isEqualTo(OrderStatus.AVAILABLE);
+        assertThat(saved.getCreatedAt()).isEqualTo(Instant.parse("2020-01-01T00:00:00Z"));
     }
 
     private ConsumerRecord<String, String> findRecordForOrder(UUID orderId, Duration timeout) {
