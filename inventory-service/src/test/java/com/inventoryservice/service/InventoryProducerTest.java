@@ -1,38 +1,35 @@
-package com.orderservice.service;
+package com.inventoryservice.service;
 
-import com.orderservice.dto.OrderCreatedEvent;
+import com.inventoryservice.dto.InventoryResultEvent;
+import com.inventoryservice.dto.InventoryStatus;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
 
-import java.time.Instant;
 import java.util.UUID;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
-class OrderProducerTest {
+class InventoryProducerTest {
 
-    private static final String TOPIC = "order-created";
+    private static final String TOPIC = "inventory-result";
 
     @Mock
     private KafkaTemplate<String, Object> kafkaTemplate;
 
     @Test
-    void send_publishesEventToOrderCreatedTopic() {
-        OrderProducer orderProducer = new OrderProducer(kafkaTemplate, TOPIC);
-        OrderCreatedEvent event = OrderCreatedEvent.builder()
+    void send_publishesEventToInventoryResultTopic() {
+        InventoryProducer inventoryProducer = new InventoryProducer(kafkaTemplate, TOPIC);
+        InventoryResultEvent event = InventoryResultEvent.builder()
                 .orderId(UUID.randomUUID())
-                .customerId(15L)
-                .product("Laptop")
-                .quantity(2)
-                .createdTime(Instant.now())
+                .status(InventoryStatus.AVAILABLE)
                 .build();
 
-        orderProducer.send(event);
+        inventoryProducer.send(event);
 
         verify(kafkaTemplate).send(TOPIC, event.orderId().toString(), event);
         verifyNoMoreInteractions(kafkaTemplate);

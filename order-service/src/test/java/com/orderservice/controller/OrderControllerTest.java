@@ -1,44 +1,72 @@
 package com.orderservice.controller;
 
-import com.orderservice.dto.OrderCreatedEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orderservice.dto.OrderRequest;
-import com.orderservice.dto.OrderResponse;
-import com.orderservice.service.OrderProducer;
+import com.orderservice.service.OrderService;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.verify;
+import java.util.UUID;
 
-@ExtendWith(MockitoExtension.class)
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(OrderController.class)
 class OrderControllerTest {
 
-    @Mock
-    private OrderProducer orderProducer;
+    @Autowired
+    private MockMvc mockMvc;
 
-    @Captor
-    private ArgumentCaptor<OrderCreatedEvent> eventCaptor;
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockitoBean
+    private OrderService orderService;
 
     @Test
-    void createOrder_generatesEventAndPublishesIt() {
-        OrderController controller = new OrderController(orderProducer);
-        OrderRequest request = new OrderRequest(15L, "Laptop", 2);
+    void createOrder_returnsAcceptedWithOrderId_whenRequestIsValid() throws Exception {
+        UUID orderId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        OrderRequest request = OrderRequest.builder().customerId(15L).product("Laptop").quantity(2).build();
+        when(orderService.createOrder(request)).thenReturn(orderId);
 
-        OrderResponse response = controller.createOrder(request);
+        mockMvc.perform(post("/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.orderId").value(orderId.toString()));
+    }
 
-        verify(orderProducer).send(eventCaptor.capture());
-        OrderCreatedEvent event = eventCaptor.getValue();
+    @Test
+    void createOrder_returnsBadRequest_whenProductIsNull() throws Exception {
+        OrderRequest request = OrderRequest.builder().customerId(15L).product(null).quantity(2).build();
 
-        assertThat(event.orderId()).isNotNull();
-        assertThat(event.customerId()).isEqualTo(15L);
-        assertThat(event.product()).isEqualTo("Laptop");
-        assertThat(event.quantity()).isEqualTo(2);
-        assertThat(event.createdTime()).isNotNull();
+        mockMvc.perform(post("/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
 
-        assertThat(response.orderId()).isEqualTo(event.orderId());
+        verifyNoInteractions(orderService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, -1, -100})
+    void createOrder_returnsBadRequest_whenQuantityIsNotPositive(int quantity) throws Exception {
+        OrderRequest request = OrderRequest.builder().customerId(15L).product("Laptop").quantity(quantity).build();
+
+        mockMvc.perform(post("/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(orderService);
     }
 }
