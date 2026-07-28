@@ -1,8 +1,10 @@
 package com.orderservice.service;
 
+import com.orderservice.dto.InventoryResult;
 import com.orderservice.dto.OrderCreatedEvent;
 import com.orderservice.dto.OrderRequest;
 import com.orderservice.entity.OrderEntity;
+import com.orderservice.entity.OrderStatus;
 import com.orderservice.repository.OrderRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Instant;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -63,5 +66,14 @@ class OrderServiceTest {
         assertThatThrownBy(() -> orderService.createOrder(request))
                 .isInstanceOf(RuntimeException.class);
         verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void updateOrderStatus_throwsNoSuchElementException_whenOrderNotFound() {
+        UUID orderId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+        InventoryResult inventoryResult = InventoryResult.builder().orderId(orderId).status(OrderStatus.AVAILABLE).build();
+
+        assertThatThrownBy(() -> orderService.updateOrderStatus(inventoryResult))
+                .isInstanceOf(NoSuchElementException.class);
     }
 }
