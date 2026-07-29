@@ -1,12 +1,14 @@
 package com.inventoryservice.integration;
 
 import com.inventoryservice.dto.OrderCreatedEvent;
+import com.inventoryservice.service.FailureSimulator;
 import com.inventoryservice.service.OrderProcessingService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import java.time.Instant;
@@ -30,6 +32,9 @@ class OrderCreatedListenerIntegrationTest {
 
     @MockitoSpyBean
     private OrderProcessingService orderProcessingService;
+
+    @MockitoBean
+    private FailureSimulator failureSimulator;
 
     @Test
     void listener_consumesOrderCreatedEvent() throws Exception {
