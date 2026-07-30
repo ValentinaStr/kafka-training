@@ -12,6 +12,9 @@ public class OrderCreatedListener {
 
     private final OrderProcessingService orderProcessingService;
 
+    // Non-blocking retry via separate retry/DLT topics.
+    // @RetryableTopic(attempts = "${app.kafka.retry.max-attempts}",
+    //         backoff = @Backoff(delayExpression = "${app.kafka.retry.backoff-ms}"))
     @KafkaListener(topics = "${app.kafka.topics.order-created}", groupId = "${spring.kafka.consumer.group-id}")
     public void onOrderCreated(OrderCreatedEvent event) {
         orderProcessingService.process(event);

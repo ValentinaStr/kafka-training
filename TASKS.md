@@ -74,3 +74,40 @@ Statuses
 NEW
 AVAILABLE
 OUT_OF_STOCK
+
+Task 7. Retry & Error Handling
+Randomly throw exception
+if (Random.nextBoolean())
+    throw new RuntimeException();
+Configure
+retries
+backoff
+Message eventually succeeds.
+ 
+Task 8. Dead Letter Topic (DLT)
+If message fails after retries
+Move it into
+order-created.DLT
+Create consumer
+dlt-monitor
+Print failed messages.
+Skills
+DLT
+DeadLetterPublishingRecoverer
+Task 9. Idempotency
+Duplicate events may arrive.
+Prevent processing same
+orderId
+twice.
+Possible implementation
+processed_messages
+table.
+ 
+Task 10. Multiple Consumers
+Create
+notification-service
+Consumes same event.
+Pretend sending email.
+Example
+Email sent to customer
+Shows pub/sub.

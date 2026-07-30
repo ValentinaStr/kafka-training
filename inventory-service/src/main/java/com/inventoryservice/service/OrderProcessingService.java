@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 public class OrderProcessingService {
 
     private final InventoryProducer inventoryProducer;
+    private final FailureSimulator failureSimulator;
 
     @Value("${app.inventory.available-threshold}")
     private int availableThreshold;
@@ -25,6 +26,8 @@ public class OrderProcessingService {
                 event.product(),
                 event.quantity()
         );
+
+        failureSimulator.maybeFail();
 
         InventoryStatus status = event.quantity() <= availableThreshold ? InventoryStatus.AVAILABLE : InventoryStatus.OUT_OF_STOCK;
         log.info("Order {} inventory status: {}", event.orderId(), status);

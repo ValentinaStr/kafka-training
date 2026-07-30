@@ -4,6 +4,7 @@ import com.inventoryservice.dto.InventoryResultEvent;
 import com.inventoryservice.dto.InventoryStatus;
 import com.inventoryservice.dto.OrderCreatedEvent;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -15,13 +16,19 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.time.Instant;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class OrderProcessingServiceTest {
 
     @Mock
     private InventoryProducer inventoryProducer;
+
+    @Mock
+    private FailureSimulator failureSimulator;
 
     @InjectMocks
     private OrderProcessingService orderProcessingService;
@@ -65,5 +72,22 @@ class OrderProcessingServiceTest {
 
         verify(inventoryProducer).send(
                 InventoryResultEvent.builder().orderId(orderId).status(InventoryStatus.OUT_OF_STOCK).build());
+    }
+
+    @Test
+    void process_propagatesExceptionAndDoesNotPublish_whenFailureSimulatorThrows() {
+        OrderCreatedEvent event = OrderCreatedEvent.builder()
+                .orderId(UUID.randomUUID())
+                .customerId(15L)
+                .product("Laptop")
+                .quantity(2)
+                .createdTime(Instant.now())
+                .build();
+        doThrow(new RuntimeException("simulated failure")).when(failureSimulator).maybeFail();
+
+        assertThatThrownBy(() -> orderProcessingService.process(event))
+                .isInstanceOf(RuntimeException.class);
+
+        verifyNoInteractions(inventoryProducer);
     }
 }

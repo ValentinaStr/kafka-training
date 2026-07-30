@@ -57,11 +57,7 @@ Starts:
 - **pgAdmin** — http://localhost:5050, login `admin@admin.com` / `admin`
   (after first login, manually add a server: Host `postgres`, Port `5432`, DB `orderdb`, User/Password `postgres`/`postgres`)
 
-Kafka has no persistent volume — topics are lost whenever the `kafka` container is recreated (including `docker compose down` + `up`, not just `-v`). Create the topic once per restart:
-```bash
-docker exec order-service-kafka kafka-topics.sh --create --if-not-exists --topic order-created --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
-```
-(or create it via Kafka UI instead)
+Kafka has no persistent volume — topics are lost whenever the `kafka` container is recreated (including `docker compose down` + `up`, not just `-v`). Topics (`order-created`, `inventory-result`) are auto-created on first publish/subscribe (`auto.create.topics.enable` defaults to `true`, not overridden here), so no manual setup is needed after a restart.
 
 Stop: `docker compose down` (Postgres data persists via its volume; Kafka topics do not), or `docker compose down -v` (also wipes Postgres data).
 
