@@ -4,7 +4,9 @@ import com.orderservice.dto.InventoryResult;
 import com.orderservice.dto.OrderCreatedEvent;
 import com.orderservice.dto.OrderRequest;
 import com.orderservice.entity.OrderEntity;
+import com.orderservice.entity.ProcessedMessage;
 import com.orderservice.repository.OrderRepository;
+import com.orderservice.repository.ProcessedMessageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -21,6 +23,7 @@ import java.util.UUID;
 public class OrderService {
 
     private final OrderRepository orderRepository;
+    private final ProcessedMessageRepository processedMessageRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
@@ -35,9 +38,20 @@ public class OrderService {
 
     @Transactional
     public void updateOrderStatus(InventoryResult inventoryResult) {
-        OrderEntity order = orderRepository.findById(inventoryResult.orderId())
-                .orElseThrow(() -> new NoSuchElementException("Order not found: " + inventoryResult.orderId()));
+        UUID orderId = inventoryResult.orderId();
+        if (processedMessageRepository.existsById(orderId)) {
+            log.info("Order {} already processed, skipping duplicate inventory result", orderId);
+            return;
+        }
+
+        OrderEntity order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new NoSuchElementException("Order not found: " + orderId));
         order.setStatus(inventoryResult.status());
+
+        processedMessageRepository.save(ProcessedMessage.builder()
+                .orderId(orderId)
+                .processedAt(Instant.now())
+                .build());
         log.info("Order {} status updated to {}", order.getId(), order.getStatus());
     }
 
