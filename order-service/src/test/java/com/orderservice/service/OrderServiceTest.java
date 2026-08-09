@@ -6,6 +6,7 @@ import com.orderservice.dto.OrderRequest;
 import com.orderservice.entity.OrderEntity;
 import com.orderservice.entity.OrderStatus;
 import com.orderservice.repository.OrderRepository;
+import com.orderservice.repository.ProcessedMessageRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,6 +21,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -29,6 +31,9 @@ class OrderServiceTest {
 
     @Mock
     private OrderRepository orderRepository;
+
+    @Mock
+    private ProcessedMessageRepository processedMessageRepository;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -75,5 +80,18 @@ class OrderServiceTest {
 
         assertThatThrownBy(() -> orderService.updateOrderStatus(inventoryResult))
                 .isInstanceOf(NoSuchElementException.class);
+        verify(processedMessageRepository, never()).save(any());
+    }
+
+    @Test
+    void updateOrderStatus_skipsDuplicate_whenAlreadyProcessed() {
+        UUID orderId = UUID.fromString("00000000-0000-0000-0000-000000000003");
+        InventoryResult inventoryResult = InventoryResult.builder().orderId(orderId).status(OrderStatus.AVAILABLE).build();
+        when(processedMessageRepository.existsById(orderId)).thenReturn(true);
+
+        orderService.updateOrderStatus(inventoryResult);
+
+        verify(orderRepository, never()).findById(any());
+        verify(processedMessageRepository, never()).save(any());
     }
 }
