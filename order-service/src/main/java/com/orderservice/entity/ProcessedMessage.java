@@ -18,6 +18,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "processed_messages")
+// No cleanup yet - Kafka's default topic retention is 7 days, so redelivery past that point is impossible; a periodic purge of older rows should be added.
 public class ProcessedMessage {
 
     @Id
