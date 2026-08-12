@@ -23,7 +23,7 @@ import static org.mockito.Mockito.verify;
         topics = OrderCreatedListenerIntegrationTest.TOPIC,
         bootstrapServersProperty = "spring.kafka.bootstrap-servers"
 )
-class OrderCreatedListenerIntegrationTest {
+class OrderCreatedListenerIntegrationTest extends TestContainerConfig {
 
     static final String TOPIC = "order-created";
 

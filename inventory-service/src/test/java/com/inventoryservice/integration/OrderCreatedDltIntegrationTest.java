@@ -36,7 +36,7 @@ import static org.mockito.Mockito.doThrow;
         },
         bootstrapServersProperty = "spring.kafka.bootstrap-servers"
 )
-class OrderCreatedDltIntegrationTest {
+class OrderCreatedDltIntegrationTest extends TestContainerConfig {
 
     static final String ORDER_CREATED_TOPIC = "order-created";
     static final String DLT_TOPIC = "order-created.DLT";

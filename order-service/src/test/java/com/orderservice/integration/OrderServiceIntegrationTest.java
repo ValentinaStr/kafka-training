@@ -6,7 +6,9 @@ import com.orderservice.dto.OrderCreatedEvent;
 import com.orderservice.dto.OrderRequest;
 import com.orderservice.entity.OrderEntity;
 import com.orderservice.entity.OrderStatus;
+import com.orderservice.entity.ProcessedMessage;
 import com.orderservice.repository.OrderRepository;
+import com.orderservice.repository.ProcessedMessageRepository;
 import com.orderservice.service.OrderService;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -45,6 +47,9 @@ class OrderServiceIntegrationTest extends TestContainerConfig {
 
     @Autowired
     private OrderRepository orderRepository;
+
+    @Autowired
+    private ProcessedMessageRepository processedMessageRepository;
 
     @Autowired
     private EmbeddedKafkaBroker embeddedKafkaBroker;
@@ -128,6 +133,35 @@ class OrderServiceIntegrationTest extends TestContainerConfig {
         assertThat(saved.getQuantity()).isEqualTo(3);
         assertThat(saved.getStatus()).isEqualTo(OrderStatus.AVAILABLE);
         assertThat(saved.getCreatedAt()).isEqualTo(Instant.parse("2020-01-01T00:00:00Z"));
+    }
+
+    @Test
+    void updateOrderStatus_ignoresAlreadyProcessedMessage() {
+        OrderEntity created = orderRepository.save(
+                OrderEntity.builder()
+                        .customerId(101L)
+                        .product("Car")
+                        .quantity(3)
+                        .status(OrderStatus.AVAILABLE) // already correctly processed once
+                        .createdAt(Instant.parse("2020-01-01T00:00:00Z"))
+                        .build());
+        UUID orderId = created.getId();
+
+        processedMessageRepository.save(
+                ProcessedMessage.builder()
+                        .orderId(orderId)
+                        .processedAt(Instant.now())
+                        .build());
+
+        // Duplicate delivery of the same event - different status to make a missed skip visible.
+        orderService.updateOrderStatus(
+                InventoryResult.builder()
+                        .orderId(orderId)
+                        .status(OrderStatus.OUT_OF_STOCK)
+                        .build());
+
+        OrderEntity saved = orderRepository.findById(orderId).orElseThrow();
+        assertThat(saved.getStatus()).isEqualTo(OrderStatus.AVAILABLE);
     }
 
     private ConsumerRecord<String, String> findRecordForOrder(UUID orderId, Duration timeout) {

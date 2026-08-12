@@ -3,6 +3,7 @@ package com.inventoryservice.service;
 import com.inventoryservice.dto.InventoryResultEvent;
 import com.inventoryservice.dto.InventoryStatus;
 import com.inventoryservice.dto.OrderCreatedEvent;
+import com.inventoryservice.repository.ProcessedMessageRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,9 +18,13 @@ import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class OrderProcessingServiceTest {
@@ -29,6 +34,9 @@ class OrderProcessingServiceTest {
 
     @Mock
     private FailureSimulator failureSimulator;
+
+    @Mock
+    private ProcessedMessageRepository processedMessageRepository;
 
     @InjectMocks
     private OrderProcessingService orderProcessingService;
@@ -54,6 +62,7 @@ class OrderProcessingServiceTest {
 
         verify(inventoryProducer).send(
                 InventoryResultEvent.builder().orderId(orderId).status(InventoryStatus.AVAILABLE).build());
+        verify(processedMessageRepository).save(argThat(m -> m.getOrderId().equals(orderId)));
     }
 
     @ParameterizedTest
@@ -89,5 +98,23 @@ class OrderProcessingServiceTest {
                 .isInstanceOf(RuntimeException.class);
 
         verifyNoInteractions(inventoryProducer);
+        verify(processedMessageRepository, never()).save(any());
+    }
+
+    @Test
+    void process_skipsDuplicate_whenAlreadyProcessed() {
+        OrderCreatedEvent event = OrderCreatedEvent.builder()
+                .orderId(UUID.randomUUID())
+                .customerId(15L)
+                .product("Laptop")
+                .quantity(2)
+                .createdTime(Instant.now())
+                .build();
+        when(processedMessageRepository.existsById(event.orderId())).thenReturn(true);
+
+        orderProcessingService.process(event);
+
+        verifyNoInteractions(failureSimulator, inventoryProducer);
+        verify(processedMessageRepository, never()).save(any());
     }
 }
