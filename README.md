@@ -1,29 +1,27 @@
+```
                      REST
-
                       |
-
                 Order Service
-
                       |
-
              Kafka: order-created
-
                       |
-
         ---------------------------------
-
         |                               |
-
 Inventory Service             Notification Service
-
         |
-
 Kafka: inventory-result
-
         |
-
 Order Service
- 
+```
+
+## Message flow
+
+1. `POST /orders` on **order-service** — validates the request, saves the order to Postgres (status `NEW`), then publishes an `OrderCreatedEvent` to the `order-created` topic (only after the DB transaction commits).
+2. Two independent consumer groups read every `order-created` message (pub/sub fan-out):
+   - **inventory-service** checks quantity against a threshold and publishes an `InventoryResultEvent` (`AVAILABLE` or `OUT_OF_STOCK`) to the `inventory-result` topic.
+   - **notification-service** pretends to send the customer a confirmation email (prints to its console) — it doesn't publish anything back.
+3. **order-service** consumes `inventory-result` and updates the order's status in Postgres (`NEW` → `AVAILABLE`/`OUT_OF_STOCK`).
+
 ## Prerequisites
 
 | Software | Version | Purpose |
@@ -40,7 +38,7 @@ Tasks — see [TASKS.md](TASKS.md)
 
 ## Running the project
 
-You need to start 2 components:
+You need to start 2 components: infrastructure, then all 3 services.
 
 ### 1. Infrastructure (Postgres + Kafka + Kafka UI + pgAdmin) — via Docker Compose
 
@@ -73,6 +71,11 @@ cd inventory-service
 ./gradlew bootRun
 ```
 
+```bash
+cd notification-service
+./gradlew bootRun
+```
+
 ### Verification
 
 ```bash
@@ -81,4 +84,4 @@ curl -X POST http://localhost:8080/orders \
   -d '{"customerId": 15, "product": "Laptop", "quantity": 2}'
 ```
 
-Expected: `202 Accepted` with `orderId`, a row in the `orders` table (status `NEW`), and in the `inventory-service` console — `Processing order: ...`.
+Expected: `202 Accepted` with `orderId`, a row in the `orders` table (status `NEW`), `Processing order: ...` in the `inventory-service` console, and `Email sent to customer ...` in the `notification-service` console.
