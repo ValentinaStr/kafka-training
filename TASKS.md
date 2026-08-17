@@ -94,6 +94,7 @@ Print failed messages.
 Skills
 DLT
 DeadLetterPublishingRecoverer
+
 Task 9. Idempotency
 Duplicate events may arrive.
 Prevent processing same
@@ -111,3 +112,53 @@ Pretend sending email.
 Example
 Email sent to customer
 Shows pub/sub.
+
+Task 11. Multiple Event Types
+Introduce
+OrderCreated
+OrderCancelled
+OrderUpdated
+Use one topic
+order-events
+Handle different event types.
+ 
+Task 12. Kafka Keys & Partitions
+Send
+customerId
+as Kafka key.
+Observe
+partition distribution
+ordering
+Explain why messages for one customer stay ordered.
+
+Task 13. Consumer Groups
+Run
+inventory-service
+3 instances.
+Observe load balancing.
+Then start another consumer group.
+Observe fan-out.
+
+Task 14. Integration Testing
+Use
+@EmbeddedKafka
+or Testcontainers.
+Verify
+POST /orders
+actually produces Kafka event.
+Verify consumer processes it.
+Task 15. Observability
+Add
+Micrometer
+Prometheus
+Health endpoint
+Logging correlation ID
+
+Task 16. Transactional Messaging
+Guarantee
+DB saved
+Kafka message published
+Discuss
+Transactional Outbox Pattern
+Why dual writes are dangerous
+No need to fully implement Outbox initially—just understand the problem.
