@@ -121,6 +121,10 @@ OrderUpdated
 Use one topic
 order-events
 Handle different event types.
+
+Task 11, order-events replaces order-created. Order Service will send all order events (OrderCreated, OrderUpdated, OrderCancelled) to order-events.
+Both Inventory Service and Notification Service will consume this topic, but they will use separate consumer groups. Each service should process only the events it needs.
+The order-created topic was only for the previous tasks.
  
 Task 12. Kafka Keys & Partitions
 Send
