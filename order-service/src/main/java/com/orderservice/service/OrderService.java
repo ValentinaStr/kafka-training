@@ -1,9 +1,11 @@
 package com.orderservice.service;
 
 import com.orderservice.dto.InventoryResult;
-import com.orderservice.dto.OrderCreatedEvent;
+import com.orderservice.dto.OrderEvent;
+import com.orderservice.dto.OrderEventType;
 import com.orderservice.dto.OrderRequest;
 import com.orderservice.entity.OrderEntity;
+import com.orderservice.entity.OrderStatus;
 import com.orderservice.entity.ProcessedMessage;
 import com.orderservice.repository.OrderRepository;
 import com.orderservice.repository.ProcessedMessageRepository;
@@ -31,7 +33,7 @@ public class OrderService {
         OrderEntity savedOrder = orderRepository.save(mapOrderRequestToOrderEntity(request));
         log.info("Order {} saved successfully", savedOrder.getId());
 
-        eventPublisher.publishEvent(mapOrderEntityToOrderCreatedEvent(savedOrder));
+        eventPublisher.publishEvent(mapOrderEntityToOrderEvent(savedOrder, OrderEventType.CREATED));
 
         return savedOrder.getId();
     }
@@ -53,6 +55,11 @@ public class OrderService {
                 .processedAt(Instant.now())
                 .build());
         log.info("Order {} status updated to {}", order.getId(), order.getStatus());
+
+        OrderEventType eventType = order.getStatus() == OrderStatus.OUT_OF_STOCK
+                ? OrderEventType.CANCELLED
+                : OrderEventType.UPDATED;
+        eventPublisher.publishEvent(mapOrderEntityToOrderEvent(order, eventType));
     }
 
     private OrderEntity mapOrderRequestToOrderEntity(OrderRequest request) {
@@ -64,13 +71,14 @@ public class OrderService {
                 .build();
     }
 
-    private OrderCreatedEvent mapOrderEntityToOrderCreatedEvent(OrderEntity savedOrder) {
-        return OrderCreatedEvent.builder()
-                .orderId(savedOrder.getId())
-                .customerId(savedOrder.getCustomerId())
-                .product(savedOrder.getProduct())
-                .quantity(savedOrder.getQuantity())
-                .createdTime(savedOrder.getCreatedAt())
+    private OrderEvent mapOrderEntityToOrderEvent(OrderEntity order, OrderEventType eventType) {
+        return OrderEvent.builder()
+                .eventType(eventType)
+                .orderId(order.getId())
+                .customerId(order.getCustomerId())
+                .product(order.getProduct())
+                .quantity(order.getQuantity())
+                .eventTime(Instant.now())
                 .build();
     }
 }
