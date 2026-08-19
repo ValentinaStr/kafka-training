@@ -1,30 +1,29 @@
+```
                      REST
-
                       |
-
                 Order Service
-
                       |
 
              Kafka: order-events
        (OrderCreated/OrderUpdated/OrderCancelled)
-
                       |
-
         ---------------------------------
-
         |                               |
-
 Inventory Service             Notification Service
-
         |
-
 Kafka: inventory-result
-
         |
-
 Order Service
- 
+```
+
+## Message flow
+
+1. `POST /orders` on **order-service** — validates the request, saves the order to Postgres (status `NEW`), then publishes an `OrderCreatedEvent` to the `order-created` topic (only after the DB transaction commits).
+2. Two independent consumer groups read every `order-created` message (pub/sub fan-out):
+   - **inventory-service** checks quantity against a threshold and publishes an `InventoryResultEvent` (`AVAILABLE` or `OUT_OF_STOCK`) to the `inventory-result` topic.
+   - **notification-service** pretends to send the customer a confirmation email (prints to its console) — it doesn't publish anything back.
+3. **order-service** consumes `inventory-result` and updates the order's status in Postgres (`NEW` → `AVAILABLE`/`OUT_OF_STOCK`).
+
 ## Prerequisites
 
 | Software | Version | Purpose |
