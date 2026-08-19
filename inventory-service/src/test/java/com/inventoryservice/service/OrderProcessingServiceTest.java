@@ -2,7 +2,8 @@ package com.inventoryservice.service;
 
 import com.inventoryservice.dto.InventoryResultEvent;
 import com.inventoryservice.dto.InventoryStatus;
-import com.inventoryservice.dto.OrderCreatedEvent;
+import com.inventoryservice.dto.OrderEvent;
+import com.inventoryservice.dto.OrderEventType;
 import com.inventoryservice.repository.ProcessedMessageRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,12 +51,13 @@ class OrderProcessingServiceTest {
     @ValueSource(ints = {1, 5})
     void process_sendsAvailable_whenQuantityIsAtMostFive(int quantity) {
         UUID orderId = UUID.randomUUID();
-        OrderCreatedEvent event = OrderCreatedEvent.builder()
+        OrderEvent event = OrderEvent.builder()
+                .eventType(OrderEventType.CREATED)
                 .orderId(orderId)
                 .customerId(15L)
                 .product("Laptop")
                 .quantity(quantity)
-                .createdTime(Instant.now())
+                .eventTime(Instant.now())
                 .build();
 
         orderProcessingService.process(event);
@@ -69,12 +71,13 @@ class OrderProcessingServiceTest {
     @ValueSource(ints = {6, 100})
     void process_sendsOutOfStock_whenQuantityIsAboveFive(int quantity) {
         UUID orderId = UUID.randomUUID();
-        OrderCreatedEvent event = OrderCreatedEvent.builder()
+        OrderEvent event = OrderEvent.builder()
+                .eventType(OrderEventType.CREATED)
                 .orderId(orderId)
                 .customerId(15L)
                 .product("Laptop")
                 .quantity(quantity)
-                .createdTime(Instant.now())
+                .eventTime(Instant.now())
                 .build();
 
         orderProcessingService.process(event);
@@ -85,12 +88,13 @@ class OrderProcessingServiceTest {
 
     @Test
     void process_propagatesExceptionAndDoesNotPublish_whenFailureSimulatorThrows() {
-        OrderCreatedEvent event = OrderCreatedEvent.builder()
+        OrderEvent event = OrderEvent.builder()
+                .eventType(OrderEventType.CREATED)
                 .orderId(UUID.randomUUID())
                 .customerId(15L)
                 .product("Laptop")
                 .quantity(2)
-                .createdTime(Instant.now())
+                .eventTime(Instant.now())
                 .build();
         doThrow(new RuntimeException("simulated failure")).when(failureSimulator).maybeFail();
 
@@ -103,12 +107,13 @@ class OrderProcessingServiceTest {
 
     @Test
     void process_skipsDuplicate_whenAlreadyProcessed() {
-        OrderCreatedEvent event = OrderCreatedEvent.builder()
+        OrderEvent event = OrderEvent.builder()
+                .eventType(OrderEventType.CREATED)
                 .orderId(UUID.randomUUID())
                 .customerId(15L)
                 .product("Laptop")
                 .quantity(2)
-                .createdTime(Instant.now())
+                .eventTime(Instant.now())
                 .build();
         when(processedMessageRepository.existsById(event.orderId())).thenReturn(true);
 
