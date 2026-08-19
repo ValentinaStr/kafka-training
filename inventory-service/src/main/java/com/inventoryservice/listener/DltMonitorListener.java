@@ -1,6 +1,6 @@
 package com.inventoryservice.listener;
 
-import com.inventoryservice.dto.OrderCreatedEvent;
+import com.inventoryservice.dto.OrderEvent;
 import com.inventoryservice.service.DltMonitorService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -14,9 +14,9 @@ public class DltMonitorListener {
 
     private final DltMonitorService dltMonitorService;
 
-    @KafkaListener(topics = "${app.kafka.topics.order-created-dlt}", groupId = "dlt-monitor")
+    @KafkaListener(topics = "${app.kafka.topics.order-events-dlt}", groupId = "dlt-monitor")
     public void handleDeadLetter(
-            OrderCreatedEvent event,
+            OrderEvent event,
             @Header(KafkaHeaders.DLT_EXCEPTION_MESSAGE) String exceptionMessage) {
         dltMonitorService.report(event, exceptionMessage);
     }
@@ -24,7 +24,7 @@ public class DltMonitorListener {
 
 // Headers DeadLetterPublishingRecoverer adds to every DLT record:
 //
-// DLT_ORIGINAL_TOPIC            - the topic the message originally came from ("order-created")
+// DLT_ORIGINAL_TOPIC            - the topic the message originally came from ("order-events")
 // DLT_ORIGINAL_PARTITION        - its partition in that original topic
 // DLT_ORIGINAL_OFFSET           - its offset in that original topic
 // DLT_ORIGINAL_TIMESTAMP        - when the message was first written to the original topic

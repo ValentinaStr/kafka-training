@@ -1,6 +1,6 @@
 package com.inventoryservice.service;
 
-import com.inventoryservice.dto.OrderCreatedEvent;
+import com.inventoryservice.dto.OrderEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class DltMonitorService {
 
-    public void report(OrderCreatedEvent event, String exceptionMessage) {
+    public void report(OrderEvent event, String exceptionMessage) {
         System.out.printf(
                 "DLT message:%nOrderId: %s%nProduct: %s%nQuantity: %d%nReason: %s%n",
                 event.orderId(),

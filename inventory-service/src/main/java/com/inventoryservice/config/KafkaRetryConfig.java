@@ -15,7 +15,7 @@ public class KafkaRetryConfig {
     @Bean
     public DeadLetterPublishingRecoverer deadLetterRecoverer(
             KafkaTemplate<Object, Object> kafkaTemplate,
-            @Value("${app.kafka.topics.order-created-dlt}") String dltTopic) {
+            @Value("${app.kafka.topics.order-events-dlt}") String dltTopic) {
 
         return new DeadLetterPublishingRecoverer(kafkaTemplate,
                 (record, exception) -> new TopicPartition(dltTopic, record.partition())
