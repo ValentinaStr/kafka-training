@@ -6,7 +6,8 @@
 
                       |
 
-             Kafka: order-created
+             Kafka: order-events
+       (OrderCreated/OrderUpdated/OrderCancelled)
 
                       |
 
@@ -40,7 +41,7 @@ Tasks — see [TASKS.md](TASKS.md)
 
 ## Running the project
 
-You need to start 2 components:
+You need to start the infrastructure and all three services:
 
 ### 1. Infrastructure (Postgres + Kafka + Kafka UI + pgAdmin) — via Docker Compose
 
@@ -57,7 +58,7 @@ Starts:
 - **pgAdmin** — http://localhost:5050, login `admin@admin.com` / `admin`
   (after first login, manually add a server: Host `postgres`, Port `5432`, DB `orderdb`, User/Password `postgres`/`postgres`)
 
-Kafka has no persistent volume — topics are lost whenever the `kafka` container is recreated (including `docker compose down` + `up`, not just `-v`). Topics (`order-created`, `inventory-result`) are auto-created on first publish/subscribe (`auto.create.topics.enable` defaults to `true`, not overridden here), so no manual setup is needed after a restart.
+Kafka has no persistent volume — topics are lost whenever the `kafka` container is recreated (including `docker compose down` + `up`, not just `-v`). Topics (`order-events`, `order-events.DLT`, `inventory-result`) are auto-created on first publish/subscribe (`auto.create.topics.enable` defaults to `true`, not overridden here), so no manual setup is needed after a restart.
 
 Stop: `docker compose down` (Postgres data persists via its volume; Kafka topics do not), or `docker compose down -v` (also wipes Postgres data).
 
@@ -73,6 +74,11 @@ cd inventory-service
 ./gradlew bootRun
 ```
 
+```bash
+cd notification-service
+./gradlew bootRun
+```
+
 ### Verification
 
 ```bash
@@ -81,4 +87,4 @@ curl -X POST http://localhost:8080/orders \
   -d '{"customerId": 15, "product": "Laptop", "quantity": 2}'
 ```
 
-Expected: `202 Accepted` with `orderId`, a row in the `orders` table (status `NEW`), and in the `inventory-service` console — `Processing order: ...`.
+Expected: `202 Accepted` with `orderId`, a row in the `orders` table (status `NEW`), `Processing order: ...` in the `inventory-service` console, and `Email sent to customer ...` in the `notification-service` console.
