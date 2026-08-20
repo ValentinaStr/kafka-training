@@ -1,6 +1,7 @@
 package com.inventoryservice.listener;
 
-import com.inventoryservice.dto.OrderCreatedEvent;
+import com.inventoryservice.dto.OrderEvent;
+import com.inventoryservice.dto.OrderEventType;
 import com.inventoryservice.service.DltMonitorService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,12 +25,13 @@ class DltMonitorListenerTest {
 
     @Test
     void handleDeadLetter_callsDltMonitorService() {
-        OrderCreatedEvent event = OrderCreatedEvent.builder()
+        OrderEvent event = OrderEvent.builder()
+                .eventType(OrderEventType.CREATED)
                 .orderId(UUID.randomUUID())
                 .customerId(15L)
                 .product("Laptop")
                 .quantity(2)
-                .createdTime(Instant.now())
+                .eventTime(Instant.now())
                 .build();
 
         listener.handleDeadLetter(event, "simulated failure");

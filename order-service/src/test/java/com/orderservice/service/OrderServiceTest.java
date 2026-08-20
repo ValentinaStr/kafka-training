@@ -1,7 +1,8 @@
 package com.orderservice.service;
 
 import com.orderservice.dto.InventoryResult;
-import com.orderservice.dto.OrderCreatedEvent;
+import com.orderservice.dto.OrderEvent;
+import com.orderservice.dto.OrderEventType;
 import com.orderservice.dto.OrderRequest;
 import com.orderservice.entity.OrderEntity;
 import com.orderservice.entity.OrderStatus;
@@ -9,6 +10,7 @@ import com.orderservice.repository.OrderRepository;
 import com.orderservice.repository.ProcessedMessageRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -16,6 +18,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Instant;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,7 +54,7 @@ class OrderServiceTest {
                     .build();
 
     @Test
-    void createOrder_savesOrderAndPublishesEvent_whenSaveSucceeds() {
+    void createOrder_savesOrderAndPublishesCreatedEvent_whenSaveSucceeds() {
         when(orderRepository.save(any(OrderEntity.class))).thenReturn(orderEntity);
         OrderRequest request = OrderRequest.builder().customerId(101L).product("car").quantity(3).build();
 
@@ -59,7 +62,11 @@ class OrderServiceTest {
 
         assertThat(result).isEqualTo(orderEntity.getId());
         verify(orderRepository).save(any(OrderEntity.class));
-        verify(eventPublisher).publishEvent(any(OrderCreatedEvent.class));
+
+        ArgumentCaptor<OrderEvent> captor = ArgumentCaptor.forClass(OrderEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().eventType()).isEqualTo(OrderEventType.CREATED);
+        assertThat(captor.getValue().orderId()).isEqualTo(orderEntity.getId());
     }
 
     @Test
@@ -93,5 +100,29 @@ class OrderServiceTest {
 
         verify(orderRepository, never()).findById(any());
         verify(processedMessageRepository, never()).save(any());
+    }
+
+    @Test
+    void updateOrderStatus_publishesUpdatedEvent_whenStatusIsAvailable() {
+        InventoryResult inventoryResult = InventoryResult.builder().orderId(orderEntity.getId()).status(OrderStatus.AVAILABLE).build();
+        when(orderRepository.findById(orderEntity.getId())).thenReturn(Optional.of(orderEntity));
+
+        orderService.updateOrderStatus(inventoryResult);
+
+        ArgumentCaptor<OrderEvent> captor = ArgumentCaptor.forClass(OrderEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().eventType()).isEqualTo(OrderEventType.UPDATED);
+    }
+
+    @Test
+    void updateOrderStatus_publishesCancelledEvent_whenStatusIsOutOfStock() {
+        InventoryResult inventoryResult = InventoryResult.builder().orderId(orderEntity.getId()).status(OrderStatus.OUT_OF_STOCK).build();
+        when(orderRepository.findById(orderEntity.getId())).thenReturn(Optional.of(orderEntity));
+
+        orderService.updateOrderStatus(inventoryResult);
+
+        ArgumentCaptor<OrderEvent> captor = ArgumentCaptor.forClass(OrderEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().eventType()).isEqualTo(OrderEventType.CANCELLED);
     }
 }

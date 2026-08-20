@@ -2,7 +2,7 @@ package com.inventoryservice.service;
 
 import com.inventoryservice.dto.InventoryResultEvent;
 import com.inventoryservice.dto.InventoryStatus;
-import com.inventoryservice.dto.OrderCreatedEvent;
+import com.inventoryservice.dto.OrderEvent;
 import com.inventoryservice.entity.ProcessedMessage;
 import com.inventoryservice.repository.ProcessedMessageRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,10 +24,10 @@ public class OrderProcessingService {
     @Value("${app.inventory.available-threshold}")
     private int availableThreshold;
 
-    public void process(OrderCreatedEvent event) {
+    public void process(OrderEvent event) {
         if (processedMessageRepository.existsById(event.orderId())) {
             // counts as a successful delivery to Kafka - the offset is committed as usual
-            log.info("Order {} already processed, skipping duplicate order-created event", event.orderId());
+            log.info("Order {} already processed, skipping duplicate CREATED event", event.orderId());
             return;
         }
 

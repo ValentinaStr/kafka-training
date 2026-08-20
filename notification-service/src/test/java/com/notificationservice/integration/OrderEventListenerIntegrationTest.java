@@ -1,6 +1,7 @@
 package com.notificationservice.integration;
 
-import com.notificationservice.dto.OrderCreatedEvent;
+import com.notificationservice.dto.OrderEvent;
+import com.notificationservice.dto.OrderEventType;
 import com.notificationservice.service.EmailNotificationService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +20,7 @@ import static org.mockito.Mockito.verify;
 @SpringBootTest
 @EmbeddedKafka(
         partitions = 1,
-        topics = OrderCreatedListenerIntegrationTest.TOPIC,
+        topics = OrderEventListenerIntegrationTest.TOPIC,
         bootstrapServersProperty = "spring.kafka.bootstrap-servers"
 )
 @TestPropertySource(properties = {
@@ -27,9 +28,9 @@ import static org.mockito.Mockito.verify;
         "spring.kafka.producer.value-serializer=org.springframework.kafka.support.serializer.JsonSerializer",
         "spring.kafka.producer.properties.spring.json.add.type.headers=false"
 })
-class OrderCreatedListenerIntegrationTest {
+class OrderEventListenerIntegrationTest {
 
-    static final String TOPIC = "order-created";
+    static final String TOPIC = "order-events";
 
     @Autowired
     private KafkaTemplate<String, Object> kafkaTemplate;
@@ -37,18 +38,41 @@ class OrderCreatedListenerIntegrationTest {
     @MockitoSpyBean
     private EmailNotificationService emailNotificationService;
 
-    @Test
-    void listener_consumesOrderCreatedEvent() throws Exception {
-        OrderCreatedEvent event = OrderCreatedEvent.builder()
+    private OrderEvent eventOfType(OrderEventType eventType) {
+        return OrderEvent.builder()
+                .eventType(eventType)
                 .orderId(UUID.randomUUID())
                 .customerId(15L)
                 .product("Laptop")
                 .quantity(2)
-                .createdTime(Instant.now())
+                .eventTime(Instant.now())
                 .build();
+    }
+
+    @Test
+    void listener_consumesCreatedEvent() throws Exception {
+        OrderEvent event = eventOfType(OrderEventType.CREATED);
 
         kafkaTemplate.send(TOPIC, event).get();
 
-        verify(emailNotificationService, timeout(5000).times(1)).sendOrderConfirmation(event);
+        verify(emailNotificationService, timeout(5000).times(1)).send(event);
+    }
+
+    @Test
+    void listener_consumesUpdatedEvent() throws Exception {
+        OrderEvent event = eventOfType(OrderEventType.UPDATED);
+
+        kafkaTemplate.send(TOPIC, event).get();
+
+        verify(emailNotificationService, timeout(5000).times(1)).send(event);
+    }
+
+    @Test
+    void listener_consumesCancelledEvent() throws Exception {
+        OrderEvent event = eventOfType(OrderEventType.CANCELLED);
+
+        kafkaTemplate.send(TOPIC, event).get();
+
+        verify(emailNotificationService, timeout(5000).times(1)).send(event);
     }
 }

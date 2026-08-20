@@ -1,6 +1,7 @@
 package com.inventoryservice.integration;
 
-import com.inventoryservice.dto.OrderCreatedEvent;
+import com.inventoryservice.dto.OrderEvent;
+import com.inventoryservice.dto.OrderEventType;
 import com.inventoryservice.service.FailureSimulator;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -31,15 +32,15 @@ import static org.mockito.Mockito.doThrow;
 @EmbeddedKafka(
         partitions = 1,
         topics = {
-                OrderCreatedDltIntegrationTest.ORDER_CREATED_TOPIC,
-                OrderCreatedDltIntegrationTest.DLT_TOPIC
+                OrderEventDltIntegrationTest.ORDER_EVENTS_TOPIC,
+                OrderEventDltIntegrationTest.DLT_TOPIC
         },
         bootstrapServersProperty = "spring.kafka.bootstrap-servers"
 )
-class OrderCreatedDltIntegrationTest extends TestContainerConfig {
+class OrderEventDltIntegrationTest extends TestContainerConfig {
 
-    static final String ORDER_CREATED_TOPIC = "order-created";
-    static final String DLT_TOPIC = "order-created.DLT";
+    static final String ORDER_EVENTS_TOPIC = "order-events";
+    static final String DLT_TOPIC = "order-events.DLT";
 
     @Autowired
     private KafkaTemplate<String, Object> kafkaTemplate;
@@ -50,11 +51,11 @@ class OrderCreatedDltIntegrationTest extends TestContainerConfig {
     @MockitoBean
     private FailureSimulator failureSimulator;
 
-    private Consumer<String, OrderCreatedEvent> dltConsumer;
+    private Consumer<String, OrderEvent> dltConsumer;
 
     @BeforeEach
     void setUpConsumer() {
-        JsonDeserializer<OrderCreatedEvent> deserializer = new JsonDeserializer<>(OrderCreatedEvent.class);
+        JsonDeserializer<OrderEvent> deserializer = new JsonDeserializer<>(OrderEvent.class);
         deserializer.addTrustedPackages("com.inventoryservice.dto");
 
         dltConsumer = new DefaultKafkaConsumerFactory<>(
@@ -74,17 +75,18 @@ class OrderCreatedDltIntegrationTest extends TestContainerConfig {
         doThrow(new RuntimeException("permanent failure")).when(failureSimulator).maybeFail();
 
         UUID orderId = UUID.fromString("00000000-0000-0000-0000-000000000003");
-        OrderCreatedEvent event = OrderCreatedEvent.builder()
+        OrderEvent event = OrderEvent.builder()
+                .eventType(OrderEventType.CREATED)
                 .orderId(orderId)
                 .customerId(15L)
                 .product("Laptop")
                 .quantity(2)
-                .createdTime(Instant.parse("2026-01-01T00:00:00Z"))
+                .eventTime(Instant.parse("2026-01-01T00:00:00Z"))
                 .build();
 
-        kafkaTemplate.send(ORDER_CREATED_TOPIC, orderId.toString(), event).get();
+        kafkaTemplate.send(ORDER_EVENTS_TOPIC, orderId.toString(), event).get();
 
-        ConsumerRecord<String, OrderCreatedEvent> record =
+        ConsumerRecord<String, OrderEvent> record =
                 KafkaTestUtils.getSingleRecord(dltConsumer, DLT_TOPIC, Duration.ofSeconds(15));
 
         assertThat(record.value().orderId()).isEqualTo(orderId);

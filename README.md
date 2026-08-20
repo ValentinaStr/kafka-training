@@ -3,7 +3,9 @@
                       |
                 Order Service
                       |
-             Kafka: order-created
+
+             Kafka: order-events
+       (OrderCreated/OrderUpdated/OrderCancelled)
                       |
         ---------------------------------
         |                               |
@@ -38,7 +40,7 @@ Tasks — see [TASKS.md](TASKS.md)
 
 ## Running the project
 
-You need to start 2 components: infrastructure, then all 3 services.
+You need to start the infrastructure and all three services:
 
 ### 1. Infrastructure (Postgres + Kafka + Kafka UI + pgAdmin) — via Docker Compose
 
@@ -55,7 +57,7 @@ Starts:
 - **pgAdmin** — http://localhost:5050, login `admin@admin.com` / `admin`
   (after first login, manually add a server: Host `postgres`, Port `5432`, DB `orderdb`, User/Password `postgres`/`postgres`)
 
-Kafka has no persistent volume — topics are lost whenever the `kafka` container is recreated (including `docker compose down` + `up`, not just `-v`). Topics (`order-created`, `inventory-result`) are auto-created on first publish/subscribe (`auto.create.topics.enable` defaults to `true`, not overridden here), so no manual setup is needed after a restart.
+Kafka has no persistent volume — topics are lost whenever the `kafka` container is recreated (including `docker compose down` + `up`, not just `-v`). Topics (`order-events`, `order-events.DLT`, `inventory-result`) are auto-created on first publish/subscribe (`auto.create.topics.enable` defaults to `true`, not overridden here), so no manual setup is needed after a restart.
 
 Stop: `docker compose down` (Postgres data persists via its volume; Kafka topics do not), or `docker compose down -v` (also wipes Postgres data).
 

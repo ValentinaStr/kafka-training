@@ -1,4 +1,4 @@
-package com.notificationservice.dto;
+package com.inventoryservice.dto;
 
 import lombok.Builder;
 
@@ -6,11 +6,12 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Builder
-public record OrderCreatedEvent(
+public record OrderEvent(
+        OrderEventType eventType,
         UUID orderId,
         Long customerId,
         String product,
         Integer quantity,
-        Instant createdTime
+        Instant eventTime
 ) {
 }
