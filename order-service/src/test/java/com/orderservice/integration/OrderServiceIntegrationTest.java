@@ -89,7 +89,7 @@ class OrderServiceIntegrationTest extends TestContainerConfig {
         ConsumerRecord<String, String> record = findRecordForOrder(orderId, Duration.ofSeconds(10));
         OrderEvent event = objectMapper.readValue(record.value(), OrderEvent.class);
 
-        assertThat(record.key()).isEqualTo(orderId.toString());
+        assertThat(record.key()).isEqualTo("21");
         assertThat(event.eventType()).isEqualTo(OrderEventType.CREATED);
         assertThat(event.orderId()).isEqualTo(orderId);
         assertThat(event.customerId()).isEqualTo(21L);
@@ -100,7 +100,7 @@ class OrderServiceIntegrationTest extends TestContainerConfig {
 
     @Test
     @Transactional    // starts a transaction before the test body runs.
-    void createOrder_doesNotPublishEventToKafka_whenTransactionRollsBack() {
+    void createOrder_doesNotPublishEventToKafka_whenTransactionRollsBack() throws Exception {
         OrderRequest request = OrderRequest.builder().customerId(99L).product("Tablet").quantity(4).build();
         UUID orderId = orderService.createOrder(request);
 
@@ -191,11 +191,12 @@ class OrderServiceIntegrationTest extends TestContainerConfig {
         assertThat(saved.getStatus()).isEqualTo(OrderStatus.AVAILABLE);
     }
 
-    private ConsumerRecord<String, String> findRecordForOrder(UUID orderId, Duration timeout) {
+    private ConsumerRecord<String, String> findRecordForOrder(UUID orderId, Duration timeout) throws Exception {
         int polls = (int) (timeout.toMillis() / POLL_INTERVAL.toMillis());
         for (int i = 0; i < polls; i++) {
             for (ConsumerRecord<String, String> record : KafkaTestUtils.getRecords(consumer, POLL_INTERVAL).records(TOPIC)) {
-                if (orderId.toString().equals(record.key())) {
+                OrderEvent event = objectMapper.readValue(record.value(), OrderEvent.class);
+                if (orderId.equals(event.orderId())) {
                     return record;
                 }
             }
@@ -203,11 +204,12 @@ class OrderServiceIntegrationTest extends TestContainerConfig {
         throw new IllegalStateException("No record found for order " + orderId + " within " + timeout);
     }
 
-    private void assertNoRecordForOrder(UUID orderId, Duration timeout) {
+    private void assertNoRecordForOrder(UUID orderId, Duration timeout) throws Exception {
         int polls = (int) (timeout.toMillis() / POLL_INTERVAL.toMillis());
         for (int i = 0; i < polls; i++) {
             for (ConsumerRecord<String, String> record : KafkaTestUtils.getRecords(consumer, POLL_INTERVAL).records(TOPIC)) {
-                assertThat(record.key()).isNotEqualTo(orderId.toString());
+                OrderEvent event = objectMapper.readValue(record.value(), OrderEvent.class);
+                assertThat(event.orderId()).isNotEqualTo(orderId);
             }
         }
     }
