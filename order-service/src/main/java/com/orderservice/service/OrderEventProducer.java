@@ -24,7 +24,8 @@ public class OrderEventProducer {
     // Default phase is AFTER_COMMIT.
     // Other phases: BEFORE_COMMIT, AFTER_ROLLBACK, AFTER_COMPLETION.
     public void send(OrderEvent event) {
-        log.debug("Sending {} event for order {} to topic {}", event.eventType(), event.orderId(), topic);
-        kafkaTemplate.send(topic, event.orderId().toString(), event);
+        log.debug("Sending {} event for order {} (customer {}) to topic {}",
+                event.eventType(), event.orderId(), event.customerId(), topic);
+        kafkaTemplate.send(topic, event.customerId().toString(), event);
     }
 }
