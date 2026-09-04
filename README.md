@@ -40,6 +40,12 @@ All three services expose Spring Boot Actuator over HTTP (`spring-boot-starter-a
 
 This means a single `POST /orders` request's `traceId` shows up in `order-service`'s controller/service logs **and** in `inventory-service`'s Kafka listener log for the `CREATED` event it triggered — the same ID across the HTTP → Kafka → consumer hop, even though `spanId` differs per hop. No tracing backend (Zipkin/Tempo) is wired up here — the IDs are for correlating log lines by hand (or via a log aggregator later), not for viewing trace waterfalls.
 
+## Transactional messaging & the dual-write problem
+
+Saving an order to Postgres and publishing its event to Kafka are two independent systems — there's no shared transaction across both, so a crash between "DB commit succeeded" and "Kafka send completed" can leave an order saved with its event never published, silently. The [publish-after-commit pattern](#message-flow) already used here only guarantees the opposite case (never publish for a rolled-back save) — it doesn't close this gap.
+
+The standard fix is the **Transactional Outbox Pattern**: write the event into an `outbox` table in the same DB transaction as the order (atomic, since it's one local transaction), then have a separate poller (or a CDC tool like Debezium) read unpublished rows and send them to Kafka, retrying on failure. This turns "event silently lost forever" into "event possibly sent twice" — a duplicate, which this project's idempotent consumers (`processed_messages`, Task 9) already handle safely.
+
 ## Prerequisites
 
 | Software | Version | Purpose |
