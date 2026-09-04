@@ -30,6 +30,22 @@ Order Service
 
 Observe in Kafka UI (http://localhost:8090): open `order-events` → **Messages**, check the `Partition`/`Key` columns — same `customerId` always maps to the same partition.
 
+## Observability
+
+All three services expose Spring Boot Actuator over HTTP (`spring-boot-starter-actuator` + `micrometer-registry-prometheus` + `micrometer-tracing-bridge-brave`), each on its own port — `order-service` on `8080`, `inventory-service` on `8081`, `notification-service` on `8082` (the latter two previously ran with no web server at all; adding actuator required adding `spring-boot-starter-web` to both):
+
+- **Health**: `http://localhost:<port>/actuator/health` — `{"status":"UP"}` (includes DB connectivity for `order-service`/`inventory-service`, since Spring Boot's health indicator auto-detects the datasource).
+- **Prometheus metrics**: `http://localhost:<port>/actuator/prometheus` — JVM, HTTP, and Kafka producer/consumer metrics in Prometheus text format, ready to be scraped.
+- **Logging correlation ID**: Micrometer Tracing (Brave bridge) generates a `traceId`/`spanId` pair per HTTP request and automatically propagates it as Kafka record headers when `spring.kafka.template.observation-enabled=true` / `spring.kafka.listener.observation-enabled=true` (set in all three services). Spring Boot's default log pattern then prints `[traceId-spanId]` on every log line for free — no manual MDC code needed. `management.tracing.sampling.probability=1.0` keeps every request traced (a real deployment would sample much less).
+
+This means a single `POST /orders` request's `traceId` shows up in `order-service`'s controller/service logs **and** in `inventory-service`'s Kafka listener log for the `CREATED` event it triggered — the same ID across the HTTP → Kafka → consumer hop, even though `spanId` differs per hop. No tracing backend (Zipkin/Tempo) is wired up here — the IDs are for correlating log lines by hand (or via a log aggregator later), not for viewing trace waterfalls.
+
+## Transactional messaging & the dual-write problem
+
+Saving an order to Postgres and publishing its event to Kafka are two independent systems — there's no shared transaction across both, so a crash between "DB commit succeeded" and "Kafka send completed" can leave an order saved with its event never published, silently. The [publish-after-commit pattern](#message-flow) already used here only guarantees the opposite case (never publish for a rolled-back save) — it doesn't close this gap.
+
+The standard fix is the **Transactional Outbox Pattern**: write the event into an `outbox` table in the same DB transaction as the order (atomic, since it's one local transaction), then have a separate poller (or a CDC tool like Debezium) read unpublished rows and send them to Kafka, retrying on failure. This turns "event silently lost forever" into "event possibly sent twice" — a duplicate, which this project's idempotent consumers (`processed_messages`, Task 9) already handle safely.
+
 ## Prerequisites
 
 | Software | Version | Purpose |
@@ -73,16 +89,19 @@ Stop: `docker compose down` (Postgres data persists via its volume; Kafka topics
 cd order-service
 ./gradlew bootRun
 ```
+Listens on `8080` (REST API + actuator).
 
 ```bash
 cd inventory-service
 ./gradlew bootRun
 ```
+Listens on `8081` (actuator only — no REST API).
 
 ```bash
 cd notification-service
 ./gradlew bootRun
 ```
+Listens on `8082` (actuator only — no REST API).
 
 ### Verification
 
