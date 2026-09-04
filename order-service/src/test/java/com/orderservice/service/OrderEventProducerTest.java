@@ -36,7 +36,7 @@ class OrderEventProducerTest {
 
         orderEventProducer.send(event);
 
-        verify(kafkaTemplate).send(TOPIC, event.orderId().toString(), event);
+        verify(kafkaTemplate).send(TOPIC, event.customerId().toString(), event);
         verifyNoMoreInteractions(kafkaTemplate);
     }
 }
