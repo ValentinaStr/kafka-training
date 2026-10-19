@@ -19,11 +19,15 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.context.transaction.TestTransaction;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
@@ -31,8 +35,11 @@ import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
+@AutoConfigureMockMvc
 @EmbeddedKafka(
         partitions = 1,
         topics = OrderServiceIntegrationTest.TOPIC,
@@ -57,6 +64,9 @@ class OrderServiceIntegrationTest extends TestContainerConfig {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private MockMvc mockMvc;
 
     private Consumer<String, String> consumer;
 
@@ -96,6 +106,32 @@ class OrderServiceIntegrationTest extends TestContainerConfig {
         assertThat(event.product()).isEqualTo("Phone");
         assertThat(event.quantity()).isEqualTo(1);
         assertThat(event.eventTime()).isNotNull();
+    }
+
+    @Test
+    void createOrder_viaHttpEndpoint_savesOrderAndPublishesKafkaEvent() throws Exception {
+        OrderRequest request = OrderRequest.builder().customerId(55L).product("Tablet").quantity(3).build();
+
+        MvcResult result = mockMvc.perform(post("/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isAccepted())
+                .andReturn();
+
+        UUID orderId = UUID.fromString(
+                objectMapper.readTree(result.getResponse().getContentAsString()).get("orderId").asText());
+
+        OrderEntity saved = orderRepository.findById(orderId).orElseThrow();
+        assertThat(saved.getCustomerId()).isEqualTo(55L);
+        assertThat(saved.getProduct()).isEqualTo("Tablet");
+        assertThat(saved.getQuantity()).isEqualTo(3);
+        assertThat(saved.getStatus()).isEqualTo(OrderStatus.NEW);
+
+        ConsumerRecord<String, String> record = findRecordForOrder(orderId, Duration.ofSeconds(10));
+        OrderEvent event = objectMapper.readValue(record.value(), OrderEvent.class);
+        assertThat(event.eventType()).isEqualTo(OrderEventType.CREATED);
+        assertThat(event.orderId()).isEqualTo(orderId);
+        assertThat(event.customerId()).isEqualTo(55L);
     }
 
     @Test
