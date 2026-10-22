@@ -1,11 +1,13 @@
 package com.orderservice.service;
 
 import com.orderservice.dto.InventoryResult;
+import com.orderservice.dto.OrderDetailsResponse;
 import com.orderservice.dto.OrderEvent;
 import com.orderservice.dto.OrderEventType;
 import com.orderservice.dto.OrderRequest;
 import com.orderservice.entity.OrderEntity;
 import com.orderservice.entity.OrderStatus;
+import com.orderservice.exception.OrderNotFoundException;
 import com.orderservice.repository.OrderRepository;
 import com.orderservice.repository.ProcessedMessageRepository;
 import org.junit.jupiter.api.Test;
@@ -17,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
@@ -124,5 +127,39 @@ class OrderServiceTest {
         ArgumentCaptor<OrderEvent> captor = ArgumentCaptor.forClass(OrderEvent.class);
         verify(eventPublisher).publishEvent(captor.capture());
         assertThat(captor.getValue().eventType()).isEqualTo(OrderEventType.CANCELLED);
+    }
+
+    @Test
+    void getOrder_returnsOrderDetails_whenOrderExists() {
+        when(orderRepository.findById(orderEntity.getId())).thenReturn(Optional.of(orderEntity));
+
+        OrderDetailsResponse result = orderService.getOrder(orderEntity.getId());
+
+        assertThat(result.orderId()).isEqualTo(orderEntity.getId());
+        assertThat(result.customerId()).isEqualTo(orderEntity.getCustomerId());
+        assertThat(result.product()).isEqualTo(orderEntity.getProduct());
+        assertThat(result.quantity()).isEqualTo(orderEntity.getQuantity());
+        assertThat(result.status()).isEqualTo(orderEntity.getStatus());
+        assertThat(result.createdAt()).isEqualTo(orderEntity.getCreatedAt());
+    }
+
+    @Test
+    void getOrder_throwsOrderNotFoundException_whenOrderDoesNotExist() {
+        UUID orderId = UUID.fromString("00000000-0000-0000-0000-000000000099");
+        when(orderRepository.findById(orderId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> orderService.getOrder(orderId))
+                .isInstanceOf(OrderNotFoundException.class)
+                .hasMessageContaining(orderId.toString());
+    }
+
+    @Test
+    void getAllOrders_returnsAllOrdersMappedToDetails() {
+        when(orderRepository.findAll()).thenReturn(List.of(orderEntity));
+
+        List<OrderDetailsResponse> result = orderService.getAllOrders();
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).orderId()).isEqualTo(orderEntity.getId());
     }
 }
