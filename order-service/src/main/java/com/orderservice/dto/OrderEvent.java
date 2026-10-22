@@ -1,5 +1,6 @@
 package com.orderservice.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
 import java.time.Instant;
@@ -26,12 +27,20 @@ import java.util.UUID;
  *    schema, but requires an extra deserialization step.
  */
 @Builder
+@Schema(description = "Message published to the order-events Kafka topic. Carries CREATED, UPDATED, "
+        + "and CANCELLED events in one flat envelope, discriminated by eventType.")
 public record OrderEvent(
+        @Schema(description = "Discriminator identifying which lifecycle event this message represents")
         OrderEventType eventType,
+        @Schema(description = "Id of the order this event refers to", example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
         UUID orderId,
+        @Schema(description = "Id of the customer who placed the order, used as the Kafka message key", example = "15")
         Long customerId,
+        @Schema(description = "Product name", example = "Laptop")
         String product,
+        @Schema(description = "Quantity ordered", example = "2")
         Integer quantity,
+        @Schema(description = "Time this event was published", example = "2026-10-22T10:00:00Z")
         Instant eventTime
 ) {
 }

@@ -1,12 +1,14 @@
 package com.orderservice.service;
 
 import com.orderservice.dto.InventoryResult;
+import com.orderservice.dto.OrderDetailsResponse;
 import com.orderservice.dto.OrderEvent;
 import com.orderservice.dto.OrderEventType;
 import com.orderservice.dto.OrderRequest;
 import com.orderservice.entity.OrderEntity;
 import com.orderservice.entity.OrderStatus;
 import com.orderservice.entity.ProcessedMessage;
+import com.orderservice.exception.OrderNotFoundException;
 import com.orderservice.repository.OrderRepository;
 import com.orderservice.repository.ProcessedMessageRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
@@ -60,6 +63,29 @@ public class OrderService {
                 ? OrderEventType.CANCELLED
                 : OrderEventType.UPDATED;
         eventPublisher.publishEvent(mapOrderEntityToOrderEvent(order, eventType));
+    }
+
+    public OrderDetailsResponse getOrder(UUID orderId) {
+        OrderEntity order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+        return mapOrderEntityToOrderDetailsResponse(order);
+    }
+
+    public List<OrderDetailsResponse> getAllOrders() {
+        return orderRepository.findAll().stream()
+                .map(this::mapOrderEntityToOrderDetailsResponse)
+                .toList();
+    }
+
+    private OrderDetailsResponse mapOrderEntityToOrderDetailsResponse(OrderEntity order) {
+        return OrderDetailsResponse.builder()
+                .orderId(order.getId())
+                .customerId(order.getCustomerId())
+                .product(order.getProduct())
+                .quantity(order.getQuantity())
+                .status(order.getStatus())
+                .createdAt(order.getCreatedAt())
+                .build();
     }
 
     private OrderEntity mapOrderRequestToOrderEntity(OrderRequest request) {
